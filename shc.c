@@ -58,7 +58,7 @@ static const char * abstract[] = {
 0};
 
 static const char usage[] = 
-"Usage: shc [-e date] [-m addr] [-i iopt] [-x cmnd] [-l lopt] [-rvDTCAh] -f script";
+"Usage: shc [-e date] [-m addr] [-i iopt] [-x cmnd] [-l lopt] [-rvBDTCAh] -f script";
 
 static const char * help[] = {
 "",
@@ -69,6 +69,7 @@ static const char * help[] = {
 "    -x %s  eXec command, as a printf format i.e: exec('%s',@ARGV);",
 "    -l %s  Last shell option i.e: --",
 "    -r     Relax security. Make a redistributable binary",
+"    -B     Compile for busybox",
 "    -v     Verbose compilation",
 "    -D     Switch ON debug exec calls [OFF]",
 "    -T     Allow binary to be traceable [no]",
@@ -118,6 +119,10 @@ static int DEBUGEXEC_flag;
 static const char TRACEABLE_line[] =
 "#define TRACEABLE	%d	/* Define as 1 to enable ptrace the executable */\n";
 static int TRACEABLE_flag;
+
+static const char BUSYBOXON_line[] =
+"#define BUSYBOXON	%d	/* Define as 1 to enable work with busybox */\n";
+static int BUSYBOXON_flag;
 
 static const char * RTC[] = {
 "",
@@ -376,7 +381,12 @@ static const char * RTC[] = {
 "		}",
 "	}",
 "	j = 0;",
+"#if BUSYBOXON",
+"	varg[j++] = \"busybox\";",
+"	varg[j++] = \"sh\";",
+"#else",
 "	varg[j++] = argv[0];		/* My own name at execution */",
+"#endif",
 "	if (ret && *opts)",
 "		varg[j++] = opts;	/* Options on 1st line of code */",
 "	if (*inlo)",
@@ -416,7 +426,7 @@ static const char * RTC[] = {
 static int parse_an_arg(int argc, char * argv[])
 {
 	extern char * optarg;
-	const char * opts = "e:m:f:i:x:l:rvDTCAh";
+	const char * opts = "e:m:f:i:x:l:rvDTCAhB";
 	struct tm tmp[1];
 	time_t expdate;
 	int cnt, l;
@@ -490,6 +500,9 @@ static int parse_an_arg(int argc, char * argv[])
 		for (l = 0; abstract[l]; l++)
 			fprintf(stderr, "%s\n", abstract[l]);
 		exit(0);
+		break;
+	case 'B':
+		BUSYBOXON_flag = 1;
 		break;
 	case 'h':
 		fprintf(stderr, "%s %s, %s\n", my_name, version, subject);
@@ -920,6 +933,7 @@ int write_C(char * file, char * argv[])
 	fprintf(o, "#define      %s_z	%d\n", "hide", 1<<12);
 	fprintf(o, DEBUGEXEC_line, DEBUGEXEC_flag);
 	fprintf(o, TRACEABLE_line, TRACEABLE_flag);
+	fprintf(o, BUSYBOXON_line, BUSYBOXON_flag);
 	for (indx = 0; RTC[indx]; indx++)
 		fprintf(o, "%s\n", RTC[indx]);
 	fflush(o);
